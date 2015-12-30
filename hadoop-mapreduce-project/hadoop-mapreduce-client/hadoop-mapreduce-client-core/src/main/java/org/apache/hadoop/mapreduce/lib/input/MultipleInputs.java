@@ -30,6 +30,7 @@ import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.util.ReflectionUtils;
+import org.apache.hadoop.util.StringUtils;
 
 /**
  * This class supports MapReduce jobs that have multiple input paths with
@@ -40,8 +41,9 @@ import org.apache.hadoop.util.ReflectionUtils;
 public class MultipleInputs {
   public static final String DIR_FORMATS = 
     "mapreduce.input.multipleinputs.dir.formats";
-  public static final String DIR_MAPPERS = 
+  public static final String DIR_MAPPERS =
     "mapreduce.input.multipleinputs.dir.mappers";
+  public static final char[] ESCAPE_CHARS = { StringUtils.COMMA, ';' };
   
   /**
    * Add a {@link Path} with a custom {@link InputFormat} to the list of
@@ -54,8 +56,9 @@ public class MultipleInputs {
   @SuppressWarnings("unchecked")
   public static void addInputPath(Job job, Path path,
       Class<? extends InputFormat> inputFormatClass) {
-    String inputFormatMapping = path.toString() + ";"
-       + inputFormatClass.getName();
+    String pathStr = StringUtils.escapeString(path.toString(),
+       StringUtils.ESCAPE_CHAR, ESCAPE_CHARS);
+    String inputFormatMapping = pathStr + ";" + inputFormatClass.getName();
     Configuration conf = job.getConfiguration();
     String inputFormats = conf.get(DIR_FORMATS);
     conf.set(DIR_FORMATS,
@@ -81,7 +84,9 @@ public class MultipleInputs {
 
     addInputPath(job, path, inputFormatClass);
     Configuration conf = job.getConfiguration();
-    String mapperMapping = path.toString() + ";" + mapperClass.getName();
+    String pathStr = StringUtils.escapeString(path.toString(),
+       StringUtils.ESCAPE_CHAR, ESCAPE_CHARS);
+    String mapperMapping = pathStr + ";" + mapperClass.getName();
     String mappers = conf.get(DIR_MAPPERS);
     conf.set(DIR_MAPPERS, mappers == null ? mapperMapping
        : mappers + "," + mapperMapping);
@@ -101,9 +106,10 @@ public class MultipleInputs {
   static Map<Path, InputFormat> getInputFormatMap(JobContext job) {
     Map<Path, InputFormat> m = new HashMap<Path, InputFormat>();
     Configuration conf = job.getConfiguration();
-    String[] pathMappings = conf.get(DIR_FORMATS).split(",");
+    String[] pathMappings = StringUtils.split(conf.get(DIR_FORMATS));
     for (String pathMapping : pathMappings) {
-      String[] split = pathMapping.split(";");
+      String[] split = StringUtils.split(pathMapping,
+         StringUtils.ESCAPE_CHAR, ';');
       InputFormat inputFormat;
       try {
        inputFormat = (InputFormat) ReflectionUtils.newInstance(conf
@@ -111,7 +117,8 @@ public class MultipleInputs {
       } catch (ClassNotFoundException e) {
        throw new RuntimeException(e);
       }
-      m.put(new Path(split[0]), inputFormat);
+      m.put(new Path(StringUtils.unEscapeString(split[0],
+         StringUtils.ESCAPE_CHAR, ESCAPE_CHARS)), inputFormat);
     }
     return m;
   }
@@ -133,9 +140,10 @@ public class MultipleInputs {
     }
     Map<Path, Class<? extends Mapper>> m = 
       new HashMap<Path, Class<? extends Mapper>>();
-    String[] pathMappings = conf.get(DIR_MAPPERS).split(",");
+    String[] pathMappings = StringUtils.split(conf.get(DIR_MAPPERS));
     for (String pathMapping : pathMappings) {
-      String[] split = pathMapping.split(";");
+      String[] split = StringUtils.split(pathMapping,
+         StringUtils.ESCAPE_CHAR, ';');
       Class<? extends Mapper> mapClass;
       try {
        mapClass = 
@@ -143,7 +151,8 @@ public class MultipleInputs {
       } catch (ClassNotFoundException e) {
        throw new RuntimeException(e);
       }
-      m.put(new Path(split[0]), mapClass);
+      m.put(new Path(StringUtils.unEscapeString(split[0],
+         StringUtils.ESCAPE_CHAR, ESCAPE_CHARS)), mapClass);
     }
     return m;
   }

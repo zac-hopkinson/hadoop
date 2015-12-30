@@ -53,6 +53,10 @@ public class TestMultipleInputs extends HadoopTestCase {
   private static final Path IN2_DIR = new Path(ROOT_DIR, "input2");
   private static final Path OUT_DIR = new Path(ROOT_DIR, "output");
 
+  private static final Path IN1B_DIR = new Path(ROOT_DIR, "input1b");
+  private static final Path IN2B_DIR = new Path(ROOT_DIR, "input2b");
+  private static final Path OUTB_DIR = new Path(ROOT_DIR, "outputb");
+
   private Path getDir(Path dir) {
     // Hack for local FS that does not have the concept of a 'mounting point'
     if (isLocalFS()) {
@@ -137,6 +141,40 @@ public class TestMultipleInputs extends HadoopTestCase {
     assertTrue(output.readLine().equals("c 2"));
     assertTrue(output.readLine().equals("d 2"));
     assertTrue(output.readLine().equals("e 2"));
+  }
+
+  @Test
+  public void testEscapedChars() throws IOException {
+    Configuration conf = createJobConf();
+
+    Job job = Job.getInstance(conf);
+    job.setJobName("mi");
+
+    Path testDir1 = new Path("foo");
+    Path testDir2 = new Path("b,ar");
+    Path testDir3 = new Path("baz;");
+    Path testDir4 = new Path("t,es;t");
+
+    MultipleInputs.addInputPath(job, testDir1, TextInputFormat.class);
+    MultipleInputs.addInputPath(job, testDir2, TextInputFormat.class);
+    MultipleInputs.addInputPath(job, testDir3, TextInputFormat.class);
+    MultipleInputs.addInputPath(job, testDir4, TextInputFormat.class,
+       MapClass.class);
+
+    Map<Path, InputFormat> inputFormatMap =
+       MultipleInputs.getInputFormatMap(job);
+
+    assertTrue(inputFormatMap.size() == 4);
+    assertTrue(inputFormatMap.containsKey(testDir1));
+    assertTrue(inputFormatMap.containsKey(testDir2));
+    assertTrue(inputFormatMap.containsKey(testDir3));
+    assertTrue(inputFormatMap.containsKey(testDir4));
+
+    Map<Path, Class<? extends Mapper>> mapperTypeMap
+       = MultipleInputs.getMapperTypeMap(job);
+
+    assertTrue(mapperTypeMap.size() == 1);
+    assertTrue(mapperTypeMap.containsKey(testDir4));
   }
 
   @SuppressWarnings("unchecked")
