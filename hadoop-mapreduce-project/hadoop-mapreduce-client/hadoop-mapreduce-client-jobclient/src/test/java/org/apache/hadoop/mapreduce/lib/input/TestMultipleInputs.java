@@ -53,10 +53,6 @@ public class TestMultipleInputs extends HadoopTestCase {
   private static final Path IN2_DIR = new Path(ROOT_DIR, "input2");
   private static final Path OUT_DIR = new Path(ROOT_DIR, "output");
 
-  private static final Path IN1B_DIR = new Path(ROOT_DIR, "input1b");
-  private static final Path IN2B_DIR = new Path(ROOT_DIR, "input2b");
-  private static final Path OUTB_DIR = new Path(ROOT_DIR, "outputb");
-
   private Path getDir(Path dir) {
     // Hack for local FS that does not have the concept of a 'mounting point'
     if (isLocalFS()) {
